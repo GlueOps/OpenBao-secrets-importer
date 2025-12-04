@@ -11,7 +11,7 @@ A CLI tool to export secrets from various sources (AWS Secrets Manager, etc.) an
 - **Custom Headers**: Support for WAF/proxy authentication headers
 - **Parallel Import**: Configurable worker pool for faster imports
 - **Dry Run Mode**: Preview operations without making changes
-
+asdasdasd
 ## Installation
 
 ### From Source
