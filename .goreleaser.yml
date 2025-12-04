@@ -1,0 +1,108 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+version: 2
+
+project_name: openbao-secrets-importer
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: openbao-secrets-importer
+    main: ./cmd/openbao-secrets-importer
+    binary: openbao-secrets-importer
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+archives:
+  - id: default
+    format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_{{ .Os }}_{{ .Arch }}
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE*
+      - CLAUDE.md
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: '🚀 Features'
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: '🐛 Bug Fixes'
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: '📚 Documentation'
+      regexp: '^.*?docs(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: '🔧 Other'
+      order: 999
+
+release:
+  github:
+    owner: GlueOps
+    name: OpenBao-secrets-importer
+  draft: false
+  prerelease: auto
+  mode: keep-existing
+  header: |
+    ## OpenBao Secrets Importer {{ .Tag }}
+
+    A CLI tool to export secrets from AWS Secrets Manager and import them into OpenBao KV v2.
+
+    ### Installation
+
+    **Linux (amd64)**
+    ```bash
+    curl -sL https://github.com/GlueOps/OpenBao-secrets-importer/releases/download/{{ .Tag }}/openbao-secrets-importer_linux_amd64.tar.gz | tar -xz
+    chmod +x openbao-secrets-importer
+    sudo mv openbao-secrets-importer /usr/local/bin/
+    ```
+
+    **macOS (Apple Silicon)**
+    ```bash
+    curl -sL https://github.com/GlueOps/OpenBao-secrets-importer/releases/download/{{ .Tag }}/openbao-secrets-importer_darwin_arm64.tar.gz | tar -xz
+    chmod +x openbao-secrets-importer
+    sudo mv openbao-secrets-importer /usr/local/bin/
+    ```
+
+    **macOS (Intel)**
+    ```bash
+    curl -sL https://github.com/GlueOps/OpenBao-secrets-importer/releases/download/{{ .Tag }}/openbao-secrets-importer_darwin_amd64.tar.gz | tar -xz
+    chmod +x openbao-secrets-importer
+    sudo mv openbao-secrets-importer /usr/local/bin/
+    ```
+
+  footer: |
+    ---
+    **Full Changelog**: https://github.com/GlueOps/OpenBao-secrets-importer/compare/{{ .PreviousTag }}...{{ .Tag }}
