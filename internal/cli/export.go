@@ -34,12 +34,13 @@ Examples:
 }
 
 var (
-	exportSource   string
-	exportOutput   string
-	exportIncludes []string
-	exportExcludes []string
-	exportRegion   string
-	exportDryRun   bool
+	exportSource     string
+	exportOutput     string
+	exportIncludes   []string
+	exportExcludes   []string
+	exportRegion     string
+	exportDryRun     bool
+	exportDefaultKey string
 )
 
 func init() {
@@ -49,6 +50,7 @@ func init() {
 	exportCmd.Flags().StringArrayVarP(&exportExcludes, "exclude", "e", []string{}, "Exclude patterns (glob syntax, can be specified multiple times)")
 	exportCmd.Flags().StringVar(&exportRegion, "region", "", "AWS region (for aws-secrets-manager source)")
 	exportCmd.Flags().BoolVar(&exportDryRun, "dry-run", false, "Preview export without writing to file")
+	exportCmd.Flags().StringVar(&exportDefaultKey, "default-key", "value", "Key name for non-JSON secrets (plain text, binary)")
 
 	exportCmd.MarkFlagRequired("source")
 	exportCmd.MarkFlagRequired("output")
@@ -69,6 +71,9 @@ func runExport(cmd *cobra.Command, args []string) error {
 	opts := make(map[string]interface{})
 	if exportRegion != "" {
 		opts["region"] = exportRegion
+	}
+	if exportDefaultKey != "" {
+		opts["non_json_key"] = exportDefaultKey
 	}
 
 	if err := src.Configure(ctx, opts); err != nil {

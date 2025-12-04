@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"path/filepath"
 	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -20,6 +19,9 @@ import (
 const (
 	// SourceName is the identifier for this source.
 	SourceName = "aws-secrets-manager"
+
+	// DefaultNonJSONKey is the default key name for non-JSON secrets.
+	DefaultNonJSONKey = "value"
 )
 
 func init() {
@@ -29,13 +31,16 @@ func init() {
 
 // Source implements the source.Source interface for AWS Secrets Manager.
 type Source struct {
-	client *secretsmanager.Client
-	region string
+	client     *secretsmanager.Client
+	region     string
+	nonJSONKey string // Key name for non-JSON secrets (default: "value")
 }
 
 // NewSource creates a new AWS Secrets Manager source.
 func NewSource() source.Source {
-	return &Source{}
+	return &Source{
+		nonJSONKey: DefaultNonJSONKey,
+	}
 }
 
 // Name returns the source identifier.
@@ -51,6 +56,7 @@ func (s *Source) Description() string {
 // Configure initializes the source with AWS credentials and region.
 // Options:
 //   - region: AWS region (optional, falls back to AWS_REGION env var)
+//   - non_json_key: Key name for non-JSON secrets (default: "value")
 //
 // AWS credentials are loaded from the default credential chain:
 //   - Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN)
@@ -63,6 +69,14 @@ func (s *Source) Configure(ctx context.Context, opts map[string]interface{}) err
 	if region, ok := opts["region"].(string); ok && region != "" {
 		s.region = region
 		cfgOpts = append(cfgOpts, config.WithRegion(region))
+	}
+
+	// Get non-JSON key from options
+	if key, ok := opts["non_json_key"].(string); ok {
+		if key == "" {
+			return fmt.Errorf("non_json_key cannot be empty")
+		}
+		s.nonJSONKey = key
 	}
 
 	// Load AWS configuration using default credential chain
@@ -148,21 +162,19 @@ func (s *Source) Get(ctx context.Context, path string) (*source.Secret, error) {
 
 	// Handle binary vs string secrets
 	if result.SecretBinary != nil {
-		// Binary secret: base64 encode and use secret name as key
+		// Binary secret: base64 encode and use configured key
 		encoded := base64.StdEncoding.EncodeToString(result.SecretBinary)
-		secretName := filepath.Base(path)
-		secret.Data = map[string]interface{}{secretName: encoded}
+		secret.Data = map[string]interface{}{s.nonJSONKey: encoded}
 	} else if result.SecretString != nil {
 		secretString := aws.ToString(result.SecretString)
 
-		// Try to parse as JSON
+		// Try to parse as JSON object
 		var data map[string]interface{}
 		if err := json.Unmarshal([]byte(secretString), &data); err != nil {
-			// Not JSON: use secret name as key, value as the string
-			secretName := filepath.Base(path)
-			secret.Data = map[string]interface{}{secretName: secretString}
+			// Not JSON: use configured key
+			secret.Data = map[string]interface{}{s.nonJSONKey: secretString}
 		} else {
-			// Valid JSON: use parsed key-value pairs
+			// Valid JSON object: use parsed key-value pairs
 			secret.Data = data
 		}
 	}

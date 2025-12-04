@@ -176,8 +176,18 @@ The export file follows a versioned JSON schema:
 | AWS Secret Type | Handling |
 |----------------|----------|
 | JSON string | Parsed into individual key-value pairs |
-| Plain text | Stored as `{<secret-name>: <value>}` |
-| Binary | Base64 encoded, stored as `{<secret-name>: <base64-string>}` |
+| Plain text | Stored as `{"value": <value>}` (configurable via `--default-key`) |
+| Binary | Base64 encoded, stored as `{"value": <base64-string>}` (configurable via `--default-key`) |
+
+Use `--default-key` to customize the key name for non-JSON secrets:
+
+```bash
+# Use custom key name for plain text secrets
+openbao-secrets-importer export \
+  --source aws-secrets-manager \
+  --output secrets.json \
+  --default-key "secret_value"
+```
 
 ## Conflict Resolution
 
