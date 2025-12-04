@@ -37,6 +37,7 @@ jobs:
     needs: release
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -54,18 +55,26 @@ jobs:
         shell: bash
         run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
+      - name: Wait for release assets to be available
+        shell: bash
+        run: sleep 30
+
       - name: Download release asset
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          curl -sL -o release-asset "https://github.com/${{ github.repository }}/releases/download/${{ steps.tag.outputs.tag }}/${{ matrix.asset }}"
+          gh release download "${{ steps.tag.outputs.tag }}" \
+            --repo "${{ github.repository }}" \
+            --pattern "${{ matrix.asset }}"
 
       - name: Extract (tar.gz)
         if: matrix.os != 'windows-latest'
-        run: tar -xzf release-asset
+        run: tar -xzf "${{ matrix.asset }}"
 
       - name: Extract (zip)
         if: matrix.os == 'windows-latest'
-        run: unzip release-asset
+        run: unzip "${{ matrix.asset }}"
 
       - name: Verify help text
         shell: bash
